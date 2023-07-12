@@ -1,0 +1,367 @@
+1. CHIRP PULSE CREATION
+2. POINT TARGET SIMULATION
+3. MATCHED FILTER
+4. FORMING AN ANALYTICAL SIGNAL
+5. TRANSLATING THE SIGNAL TO BASEBAND
+6. ADDING NOISE TO THE SIMULATION 
+
+// MATLAB CODE FOR ABOVE BASIC SIGNAL GENERATION AND FILTERING //
+
+clear all
+close all
+c=340;                  %Speed of sound in air
+fs=44100;               %sampling rate of sonar signal
+dt=1/fs;                %sample spacing
+r_max=4;                %maximum range to which to simulate
+t_max=2*r_max/c;        %time delay
+t=0:dt:t_max;           %time vector
+r=c*t/2;                %range vector
+f0=10000;               %center frequency 10khz
+B=4000;                 %chirp pulse bandwidth
+T=6E-3;                 %chirp pulse length
+K=B/T;                  %chirp rate
+td=0.6*T;               %chirp delay
+v_tx=cos(2*pi*(f0*(t-td)+0.5*K*(t-td).^2)).*rect((t-td)/T);
+subplot(5,10,1)
+plot(t,v_tx)
+title('CHIRP SIGNAL V_tx')
+subplot(5,10,3)
+V_TX=fft(v_tx);
+plot(t,V_TX);
+title('FAST FOURIER TRANSFORM SIGNAL OF V_tx')
+R1=1.667;               %range of 1st target
+td1=2*R1/c;             %two way delay to target
+A1=1/R1^2;
+v_rx=A1*cos(2*pi*(f0*(t-td-td1)+0.5*K*(t-td-td1).^2)).*rect((t-td-td1)/T);
+subplot(5,10,5)
+plot(t,v_rx)
+title('RECEIVED SIGNAL V_rx')
+subplot(5,10,7)
+plot(t,fft(v_rx))
+title('FAST FOURIER TRANSFORM SIGNAL OF V_rx')
+r = xcorr(v_tx,v_rx);  %correlation between chirp signal and received siganl
+subplot(5,10,9);
+plot(r)
+title('CORRELATED CHIRP WITH PEAK SIGNAL r')    %from the output of correlated signal we find that lag L=606
+c=340;
+L=606;
+Fs=44100;
+t1=L/Fs%TIME
+D1=c*t1/2
+
+R2=2;                  %range of second target
+td2=2*R2/c;            %two way delay to target
+A2=1/R2^2;
+v_rx=(A1*cos(2*pi*(f0*(t-td-td1)+0.5*K*(t-td-td1).^2)).rect((t-td-td1)/T))+(A2*cos(2*pi(f0*(t-td-td2)+0.5*K*(t-td-td2).^2)).*rect((t-td-td2)/T));
+V_RX=fft(v_rx);
+subplot(5,10,11)
+plot(t,v_rx)
+title('RECEIVED SIGNAL V_rx')
+subplot(5,10,13)
+plot(t,fft(V_RX))
+title('FAST FOURIER TRANSFORM SIGNAL OF V_RX')
+
+%MATCHED FILTERING
+r=c*t/2;
+H=conj(V_TX);
+V_MF=H.*V_RX;
+v_mf=ifft(V_MF);
+subplot(5,10,15)
+plot(r,v_mf)
+title('Matched filtering')
+v_mf=real(v_mf);
+subplot(5,10,17)
+plot(r,v_mf)
+title('real part of Matched filtering')
+%ANALYTIC SIGNAL
+V_ANAL=V_MF;
+N=length(V_MF);
+V_ANAL(N/2:N)=0;%to zero out negative components
+v_anal=ifft(V_ANAL);
+subplot(5,10,19)
+plot(r,abs(v_anal))
+title('magnitude of analytic signal v_anal')
+subplot(5,10,21)
+plot(r,phase(v_anal))
+title('phase of analytic signal v_anal')
+%BASEBAND SIGNAL
+v_bb=v_anal.*exp(-j*2*pi*f0*t);
+subplot(5,10,23)
+plot(r,abs(v_bb))
+title('magnitude of basband signal v_bb')
+subplot(5,10,25)
+plot(r,angle(v_bb))
+title('phase of basband signal v_bb')
+
+%ADDING NOISE 
+
+t=0:dt:t_max;
+sigma=0.2*A1;
+noise_signal=sigma*2 %randn(1,N);
+v_rx1=(A1*cos(2*pi*(f0*(t-td-td1)+0.5*K*(t-td-td1).^2)).*rect((t-td-td1)/T))+noise_signal;
+subplot(5,10,27)
+plot(t,v_rx1)
+title('recieved signal with noise')
+V_RX1=fft(v_rx1);
+subplot(5,10,29)
+plot(t,v_rx1)
+title('RECEIVED SIGNAL V_rx(with noise)')
+subplot(5,10,31)
+plot(fft(V_RX1))
+title('FAST FOURIER TRANSFORM SIGNAL OF V_RX1(with noise)')
+
+%MATCHED FILTERING
+
+r1=c*t/2;
+t=0:dt:t_max;
+H=conj(V_TX);
+V_MF1=H.*V_RX1;
+v_mf1=ifft(V_MF1);
+subplot(5,10,33)
+plot(t,v_mf1)
+title('Matched filtering(with noise)')
+v_mf1=real(v_mf1);
+subplot(5,10,35)
+plot(t,v_mf1)
+title('real part of Matched filtering(with noise)')
+
+%ANALYTIC SIGNAL
+
+V_ANAL1=V_MF1;
+N=length(V_MF1);
+V_ANAL1(N/2:N)=0;
+v_anal1=ifft(V_ANAL1);
+subplot(5,10,37)
+plot(abs(v_anal1))
+title('magnitude of analytic signal v_anal(with noise)')
+subplot(5,10,39)
+plot(phase(v_anal1))
+title('phase of analytic signal v_anal(with noise)')
+
+%BASEBAND SIGNAL
+
+v_bb1=v_anal1.*exp(-j*2*pi*f0*t);
+subplot(5,10,41)
+plot(t,abs(v_bb1))
+title('magnitude of basband signal v_bb(with noise)')
+subplot(5,10,43)
+plot(t,angle(v_bb1))
+title('phase of basband signal v_bb(with noise)')
+r3 = xcorr(v_tx,v_bb1);%correlation between chirp signal and received siganl
+subplot(5,10,45)
+plot(r3)
+title('correlation between chirp signal and received baseband signal with noise')
+c=340;
+L1=max(real(r3));
+disp('max point of correlated graph with noise signal');
+disp(L1);
+Fs=44100;
+t2=L1/Fs%TIME
+D2=c*t2/2
+
+function [y]=rect(t)
+y=abs(t)<=0.5;
+end
+
+------------------------------------------------------------------------------------------------
+
+// UNDERWATER TARGET DETECTION WITH AN ACTIVE SONAR SYSTEM //
+
+%Underwater Target Detection with an Active Sonar System
+
+%Underwater Environment
+
+numPaths = 3;
+propSpeed = 1520;
+channelDepth =150;
+isopath{1} = phased.IsoSpeedUnderwaterPaths(...
+ 'ChannelDepth',channelDepth,...
+ 'NumPaths',numPaths,...
+ 'PropagationSpeed',propSpeed,...
+ 'BottomLoss',0.5,...
+ 'TwoWayPropagation',true);
+isopath{2} = phased.IsoSpeedUnderwaterPaths(...
+ 'ChannelDepth',channelDepth,...
+ 'NumPaths',numPaths,...
+ 'PropagationSpeed',propSpeed,...
+ 'BottomLoss',0.5,...
+ 'TwoWayPropagation',true);
+fc = 20e3; % Operating frequency (Hz)
+channel{1} = phased.MultipathChannel(...
+ 'OperatingFrequency',fc);
+channel{2} = phased.MultipathChannel(...
+ 'OperatingFrequency',fc);
+tgt{1} = phased.BackscatterSonarTarget(...
+ 'TSPattern',-5*ones(181,361));
+tgt{2} = phased.BackscatterSonarTarget(...
+ 'TSPattern',-15*ones(181,361));
+tgtplat{1} = phased.Platform(...
+ 'InitialPosition',[500; 1000; -70],'Velocity',[0; 0; 0]);
+tgtplat{2} = phased.Platform(...
+ 'InitialPosition',[500; 0; -40],'Velocity',[0; 0; 0]);
+helperPlotPaths([0;0;-60],[500 500; 1000 0; -70 -40], ...
+  channelDepth,numPaths)
+
+%Transmitter and Receiver
+
+maxRange = 5000;                        
+rangeRes = 10;                           
+prf = propSpeed/(2*maxRange);            % Pulse repetition frequency
+pulse_width = 2*rangeRes/propSpeed;      % Pulse width
+pulse_bw = 1/pulse_width;                % Pulse bandwidth
+fs = 2*pulse_bw;                         % Sampling rate
+wav = phased.RectangularWaveform(...
+    'PulseWidth',pulse_width,...
+    'PRF',prf,...
+    'SampleRate',fs);
+
+channel{1}.SampleRate = fs;
+channel{2}.SampleRate = fs;
+
+plat = phased.Platform(...
+    'InitialPosition',[0; 0; -60],...
+    'Velocity',[0; 0; 0]);
+
+proj = phased.IsotropicProjector(...
+    'FrequencyRange',[0 30e3],'VoltageResponse',80,'BackBaffled',true);
+
+[ElementPosition,ElementNormal] = helperSphericalProjector(8,fc,propSpeed);
+
+projArray = phased.ConformalArray(...
+    'ElementPosition',ElementPosition,...
+    'ElementNormal',ElementNormal,'Element',proj);
+
+figure(1);
+viewArray(projArray,'ShowNormals',true);
+figure(2);
+pattern(projArray,fc,-180:180,0,'CoordinateSystem','polar',...
+      'PropagationSpeed',propSpeed);
+
+% Receiver
+
+hydro = phased.IsotropicHydrophone(...
+    'FrequencyRange',[0 30e3],'VoltageSensitivity',-140);
+
+rx = phased.ReceiverPreamp(...
+    'Gain',20,...
+    'NoiseFigure',10,...
+    'SampleRate',fs,...
+    'SeedSource','Property',...
+    'Seed',2007);
+
+radiator = phased.Radiator('Sensor',projArray,'OperatingFrequency',...
+ fc,'PropagationSpeed',propSpeed);
+
+collector = phased.Collector('Sensor',hydro,'OperatingFrequency',fc,...
+  'PropagationSpeed',propSpeed);
+
+% Sonar System Simulation
+
+x = wav();    % Generate pulse
+xmits = 10;
+rx_pulses = zeros(size(x,1),xmits);
+t = (0:size(x,1)-1)/fs;
+
+for j = 1:xmits
+
+    % Update target and sonar position
+    [sonar_pos,sonar_vel] = plat(1/prf);
+
+    for i = 1:2 %Loop over targets
+       [tgt_pos,tgt_vel] = tgtplat{i}(1/prf);
+
+      % Compute transmission paths using the method of images. Paths are
+      % updated according to the CoherenceTime property.
+      [paths,dop,aloss,tgtAng,srcAng] = isopath{i}(...
+            sonar_pos,tgt_pos,...
+            sonar_vel,tgt_vel,1/prf);
+
+      % Compute the radiated signals. Steer the array towards the target.
+      tsig = radiator(x,srcAng);
+
+      % Propagate radiated signals through the channel.
+      tsig = channel{i}(tsig,paths,dop,aloss);
+
+      % Target
+      tsig = tgt{i}(tsig,tgtAng);
+
+      % Collector
+      rsig = collector(tsig,srcAng);
+      rx_pulses(:,j) = rx_pulses(:,j) + ...
+               rx(rsig);
+    end
+end
+
+% magnitude of non-coherent integration of the received signals 
+% locate the returns of the two targets.
+
+figure(3)
+rx_pulses = pulsint(rx_pulses,'noncoherent');
+plot(t,abs(rx_pulses))
+grid on
+xlabel('Time (s)')
+ylabel('Amplitude (V)')
+title('Integrated Received Pulses')
+
+% Active Sonar with Bellhop
+% Bellhop Configuration
+
+figure(4)
+[paths,dop,aloss,rcvAng,srcAng] = helperBellhopArrivals(fc,6,false);
+helperPlotPaths('MunkB_eigenray')
+
+% Create a new channel and receiver to use with data from Bellhop.
+
+release(collector)
+channelBellhop = phased.MultipathChannel(...
+          'SampleRate',fs,...
+          'OperatingFrequency',fc);
+
+rx = phased.ReceiverPreamp(...
+    'Gain',10,...
+    'NoiseFigure',10,...
+    'SampleRate',fs,...
+    'SeedSource','Property',...
+    'Seed',2007);
+
+maxRange = 150000;                        % Maximum unambiguous range
+prf = propSpeed/(maxRange);               % Pulse repetition frequency
+pulse_width = 0.02;
+wav = phased.RectangularWaveform(...
+    'PulseWidth',pulse_width,...
+    'PRF',prf,...
+    'SampleRate',fs);
+
+% Bellhop Simulation
+
+x = repmat(wav(),1,size(paths,2));
+xmits = 10;
+rx_pulses = zeros(size(x,1),xmits);
+t = (0:size(x,1)-1)/fs;
+
+for j = 1:xmits
+
+      % Projector
+      tsig = x.*proj(fc,srcAng)';
+
+      % Propagate radiated signals through the channel.
+      tsig = channelBellhop(tsig,paths,dop,aloss);
+
+      % Collector
+      rsig = collector(tsig,rcvAng);
+      rx_pulses(:,j) = rx_pulses(:,j) + ...
+               rx(rsig);
+end
+
+% Plot the non-coherent integration of the transmitted pulses.
+
+figure(5)
+rx_pulses = pulsint(rx_pulses,'noncoherent');
+plot(t,abs(rx_pulses))
+grid on
+xlim([66 70])
+xlabel('Time (s)')
+ylabel('Amplitude (V)')
+title('Integrated non coherent Received Pulses')
+
+-----------------------------------------------------------------------------------------------------
